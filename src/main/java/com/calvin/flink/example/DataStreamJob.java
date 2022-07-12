@@ -18,13 +18,19 @@
 
 package com.calvin.flink.example;
 
+import com.calvin.flink.example.deserialization.CustomDeserialization;
 import com.ververica.cdc.connectors.mysql.source.MySqlSource;
 import com.ververica.cdc.connectors.mysql.table.StartupOptions;
 import com.ververica.cdc.debezium.StringDebeziumDeserializationSchema;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+import java.util.ResourceBundle;
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -38,6 +44,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  * <p>If you change the name of the main class (with the public static void main(String[] args))
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
+@Slf4j
 public class DataStreamJob {
 
 	public static void main(String[] args) throws Exception {
@@ -52,7 +59,12 @@ public class DataStreamJob {
 		// 这可以通过 bin/flink run ... 的命令行参数进行配置，或者在创建/配置 StreamExecutionEnvironment 时写进程序。
 		env.setRuntimeMode(RuntimeExecutionMode.STREAMING);
 		env.enableCheckpointing(3000);
-		env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage("file:///work/tungee/flink-ck"));
+		env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage("file:///ck"));
+		// 确认 checkpoints 之间的时间会进行 500 ms
+		env.getCheckpointConfig().setMinPauseBetweenCheckpoints(500);
+		// 使用 externalized checkpoints，这样 checkpoint 在作业取消后仍就会被保留
+		env.getCheckpointConfig().setExternalizedCheckpointCleanup(
+				CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
 
 		/*
 		 * Here, you can start creating your execution plan for Flink.
@@ -73,18 +85,21 @@ public class DataStreamJob {
 		 * https://nightlies.apache.org/flink/flink-docs-stable/
 		 *
 		 */
+		ResourceBundle resource = ResourceBundle.getBundle("dev");
 		MySqlSource<String> mySqlSource = MySqlSource.<String>builder()
-				.hostname("127.0.0.1")
+				.hostname(resource.getString("host"))
 				.port(3306)
 				.username("root")
 				.password("123456")
 				.databaseList("test")
-				.tableList("test.customer")
-				.deserializer(new StringDebeziumDeserializationSchema())
+				.tableList("test.order_info")
+				.deserializer(new CustomDeserialization())
 				.startupOptions(StartupOptions.initial())
 				.build();
 
-		env.fromSource(mySqlSource, WatermarkStrategy.noWatermarks(), "MySQL Source").print();
+		DataStreamSource<String> streamSource = env.fromSource(mySqlSource, WatermarkStrategy.noWatermarks(), "MySQL Source");
+
+		streamSource.print();
 
 		// Execute program, beginning computation.
 		env.execute("Flink Java API Skeleton");

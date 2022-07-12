@@ -37,6 +37,8 @@ under the License.
 		<log4j.version>2.17.1</log4j.version>
 		<flink.mysql.cdc.version>2.2</flink.mysql.cdc.version>
 		<scope.level>compile</scope.level>
+		<lombok.version>1.18.24</lombok.version>
+		<fastjson.version>2.0.9.graal</fastjson.version>
 	</properties>
 
 	<repositories>
@@ -68,18 +70,11 @@ under the License.
 			<version>${flink.version}</version>
 			<scope>${scope.level}</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-table-planner_${scala.binary.version}</artifactId>
 			<version>${flink.version}</version>
-			<scope>${scope.level}</scope>
-			<exclusions>
-				<exclusion>
-					<artifactId>avatica-core</artifactId>
-					<groupId>org.apache.calcite.avatica</groupId>
-				</exclusion>
-			</exclusions>
+			<scope>test-jar</scope>
 		</dependency>
 
 
@@ -118,6 +113,18 @@ under the License.
 			<artifactId>log4j-core</artifactId>
 			<version>${log4j.version}</version>
 			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>${lombok.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+			<version>${fastjson.version}</version>
 		</dependency>
 	</dependencies>
 
